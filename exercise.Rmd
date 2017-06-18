@@ -1,0 +1,60 @@
+---
+title: "Exercise"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Overview
+Data was collected from 6 participants about how well they performed barbell lifts. They performed the lifts in 5 different ways, some correct and some incorrect. This analysis models the data to predict if the exercise was done correctly or incorrectly, based on data from accelerometers from the belt, forearm, arm and dumbell of each participant. 
+
+A random forest model was finally chosen as the best fit model for this data and showed a 97% accuracy and is able to successfully predict the classe the majority of times.
+
+## Data
+The data set for the analysis contains gyroscopic, accelerometer and magnetometer data for each repition of barbell lifts performed by the 6 participants. The participants performed the lifts correctly (class A) and incorrectly (classes B-E) 10 times apiece.
+
+Data was collected at the belt, arm, forearm and dumbbell on the x, y and z axis. From this data, the roll, pitch and yaw was calculated for each of the belt, arm, forearm and dumbell sensor locations. 
+
+```{r}
+dataFile <- read.csv("pml-training.csv", stringsAsFactors = FALSE)
+
+includeColumns <- c("roll_belt","pitch_belt","yaw_belt",
+                    "roll_arm","pitch_arm","yaw_arm",
+                    "roll_dumbbell","pitch_dumbbell","yaw_dumbbell",
+                    "roll_forearm","pitch_forearm","yaw_forearm",
+                    "classe")
+
+df <- dataFile[,includeColumns]
+```
+
+## Approach
+
+Three approaches were attempted to perform the classification modeling for the classe of the exercise. Each approach uses the roll, pitch and yaw measurements from each sensor. The first approach was to perform a simple regression. This resulted in only 43% accuracy. Then a random forest model was built, which resulted in a 97% accuracy. As a way to further enhance the model, the two predictors were combined. The predictions from the regresssion model and the random forest model were combined. This only gave an 82% accuracy. This is much better than the regression alone, but the random forest performe better alone.
+
+The random forest calculation was run with replace set to False. This causes the random forest calculation from the randomForest package to run the model using random sampling cross validation with no replacement.
+
+```{r, message=FALSE}
+    library(lattice)
+    library(ggplot2)
+    library(rpart)
+    library(randomForest)
+    library(caret)
+
+    subSampleSize <- .4 * nrow(df)
+    trainSample <- sample(nrow(df), size=subSampleSize, replace=FALSE)
+    randDFTrain <- df[trainSample,]
+    randDFTest <- df[-trainSample,]
+    
+    subRFMdl <- randomForest(as.factor(classe)~., data=randDFTrain, importance=TRUE, proximity=TRUE, replace=FALSE)
+    subRFMdlPredictions <- predict(subRFMdl, newdata = randDFTest)
+    print(confusionMatrix(randDFTest$classe, subRFMdlPredictions))
+    subRFMdlResults <- data.frame(actual = randDFTest$classe, predict=subRFMdlPredictions)
+
+    table(subRFMdlPredictions, randDFTest$classe)
+```
+
+
